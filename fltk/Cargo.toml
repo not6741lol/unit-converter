@@ -1,0 +1,11 @@
+[package]
+name = "convert-fltk"
+version = "0.2.0"
+edition = "2024"
+description = "Unit converter GUI built with fltk-rs (native, tiny)."
+license = "MIT"
+repository = "https://github.com/not6741lol/unit-converter"
+
+[dependencies]
+convert-core = { path = "../core" }
+fltk = "1.5"

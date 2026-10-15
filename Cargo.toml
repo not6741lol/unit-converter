@@ -1,19 +1,11 @@
-[package]
-name = "convert"
-version = "0.1.0"
-edition = "2024"
-description = "A tiny, fast unit converter GUI with live arithmetic expression input."
-license = "MIT"
-repository = "https://github.com/not6741lol/unit-converter"
+[workspace]
+resolver = "3"
+members = ["core", "egui", "fltk", "win32"]
 
-[dependencies]
-# `glow` (OpenGL) instead of the default `wgpu` backend: much smaller binary,
-# since wgpu drags in the naga shader compiler.
-eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"] }
-
+# Applied to every binary in the workspace: optimise hard for size.
 [profile.release]
-opt-level = "z"    # optimise for size
-lto = true         # link-time optimisation
-codegen-units = 1  # better optimisation, slower to build
-panic = "abort"    # drop unwinding machinery
-strip = true       # strip debug symbols
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

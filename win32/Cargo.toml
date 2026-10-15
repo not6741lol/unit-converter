@@ -1,0 +1,16 @@
+[package]
+name = "convert-win32"
+version = "0.2.0"
+edition = "2024"
+description = "Unit converter GUI built directly on the Win32 API (no GUI framework)."
+license = "MIT"
+repository = "https://github.com/not6741lol/unit-converter"
+
+[dependencies]
+convert-core = { path = "../core" }
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    "Win32_UI_WindowsAndMessaging",
+] }
