@@ -14,11 +14,8 @@ pub enum Category {
 }
 
 /// All categories, in display order.
-pub const ALL_CATEGORIES: [Category; 3] = [
-    Category::Length,
-    Category::Weight,
-    Category::Temperature,
-];
+pub const ALL_CATEGORIES: [Category; 3] =
+    [Category::Length, Category::Weight, Category::Temperature];
 
 impl Category {
     /// The units for this category, in display order.
@@ -137,33 +134,81 @@ mod tests {
 
     #[test]
     fn length_conversions() {
-        assert!(close(conv(Category::Length, "Kilometer", "Meter", 1.0), 1000.0));
-        assert!(close(conv(Category::Length, "Meter", "Kilometer", 1000.0), 1.0));
-        assert!(close(conv(Category::Length, "Mile", "Meter", 1.0), 1609.344));
-        assert!(close(conv(Category::Length, "Meter", "Centimeter", 1.0), 100.0));
+        assert!(close(
+            conv(Category::Length, "Kilometer", "Meter", 1.0),
+            1000.0
+        ));
+        assert!(close(
+            conv(Category::Length, "Meter", "Kilometer", 1000.0),
+            1.0
+        ));
+        assert!(close(
+            conv(Category::Length, "Mile", "Meter", 1.0),
+            1609.344
+        ));
+        assert!(close(
+            conv(Category::Length, "Meter", "Centimeter", 1.0),
+            100.0
+        ));
         assert!(close(conv(Category::Length, "Foot", "Inch", 1.0), 12.0));
         assert!(close(conv(Category::Length, "Yard", "Foot", 1.0), 3.0));
-        assert!(close(conv(Category::Length, "Inch", "Centimeter", 1.0), 2.54));
+        assert!(close(
+            conv(Category::Length, "Inch", "Centimeter", 1.0),
+            2.54
+        ));
     }
 
     #[test]
     fn weight_conversions() {
-        assert!(close(conv(Category::Weight, "Kilogram", "Gram", 1.0), 1000.0));
-        assert!(close(conv(Category::Weight, "Tonne", "Kilogram", 1.0), 1000.0));
-        assert!(close(conv(Category::Weight, "Pound", "Gram", 1.0), 453.59237));
+        assert!(close(
+            conv(Category::Weight, "Kilogram", "Gram", 1.0),
+            1000.0
+        ));
+        assert!(close(
+            conv(Category::Weight, "Tonne", "Kilogram", 1.0),
+            1000.0
+        ));
+        assert!(close(
+            conv(Category::Weight, "Pound", "Gram", 1.0),
+            453.59237
+        ));
         assert!(close(conv(Category::Weight, "Pound", "Ounce", 1.0), 16.0));
-        assert!(close(conv(Category::Weight, "Milligram", "Gram", 1000.0), 1.0));
+        assert!(close(
+            conv(Category::Weight, "Milligram", "Gram", 1000.0),
+            1.0
+        ));
     }
 
     #[test]
     fn temperature_conversions() {
-        assert!(close(conv(Category::Temperature, "Celsius", "Fahrenheit", 100.0), 212.0));
-        assert!(close(conv(Category::Temperature, "Celsius", "Fahrenheit", 0.0), 32.0));
-        assert!(close(conv(Category::Temperature, "Fahrenheit", "Celsius", 212.0), 100.0));
-        assert!(close(conv(Category::Temperature, "Celsius", "Fahrenheit", -40.0), -40.0));
-        assert!(close(conv(Category::Temperature, "Celsius", "Kelvin", 0.0), 273.15));
-        assert!(close(conv(Category::Temperature, "Kelvin", "Celsius", 273.15), 0.0));
-        assert!(close(conv(Category::Temperature, "Fahrenheit", "Kelvin", 32.0), 273.15));
+        assert!(close(
+            conv(Category::Temperature, "Celsius", "Fahrenheit", 100.0),
+            212.0
+        ));
+        assert!(close(
+            conv(Category::Temperature, "Celsius", "Fahrenheit", 0.0),
+            32.0
+        ));
+        assert!(close(
+            conv(Category::Temperature, "Fahrenheit", "Celsius", 212.0),
+            100.0
+        ));
+        assert!(close(
+            conv(Category::Temperature, "Celsius", "Fahrenheit", -40.0),
+            -40.0
+        ));
+        assert!(close(
+            conv(Category::Temperature, "Celsius", "Kelvin", 0.0),
+            273.15
+        ));
+        assert!(close(
+            conv(Category::Temperature, "Kelvin", "Celsius", 273.15),
+            0.0
+        ));
+        assert!(close(
+            conv(Category::Temperature, "Fahrenheit", "Kelvin", 32.0),
+            273.15
+        ));
     }
 
     #[test]

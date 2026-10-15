@@ -375,9 +375,8 @@ mod tests {
     }
 
     fn is_err(input: &str) {
-        match eval(input) {
-            Ok(v) => panic!("expected `{input}` to fail, but got {v}"),
-            Err(_) => {}
+        if let Ok(v) = eval(input) {
+            panic!("expected `{input}` to fail, but got {v}");
         }
     }
 

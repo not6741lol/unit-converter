@@ -2,7 +2,7 @@
 // Debug builds keep the console so `println!` and panics are visible.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use convert_core::{math, convert, fmt_num, Category, ALL_CATEGORIES};
+use convert_core::{ALL_CATEGORIES, Category, convert, fmt_num, math};
 use eframe::egui;
 
 fn main() -> eframe::Result {
@@ -55,9 +55,7 @@ impl eframe::App for Converter {
                 .selected_text(self.category.label())
                 .show_ui(ui, |ui| {
                     for c in ALL_CATEGORIES {
-                        if ui
-                            .selectable_label(self.category == c, c.label())
-                            .clicked()
+                        if ui.selectable_label(self.category == c, c.label()).clicked()
                             && self.category != c
                         {
                             self.category = c;

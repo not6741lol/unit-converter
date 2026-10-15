@@ -1,7 +1,7 @@
 // In release builds, hide the console window on Windows (run as a GUI app).
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use convert_core::{convert, fmt_num, math, Category, ALL_CATEGORIES};
+use convert_core::{ALL_CATEGORIES, Category, convert, fmt_num, math};
 use fltk::enums::CallbackTrigger;
 use fltk::prelude::*;
 use fltk::{app, button::Button, input::Input, menu::Choice, output::Output, window::Window};

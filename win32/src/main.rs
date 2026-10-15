@@ -25,19 +25,19 @@
 //! front-ends. This one is **for research and investigation by developers
 //! only.**
 
-use convert_core::{convert, fmt_num, math, Category, ALL_CATEGORIES};
+use convert_core::{ALL_CATEGORIES, Category, convert, fmt_num, math};
 use std::cell::RefCell;
 use std::ffi::c_void;
-use windows::core::PCWSTR;
 use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
-use windows::Win32::Graphics::Gdi::{UpdateWindow, HBRUSH};
+use windows::Win32::Graphics::Gdi::{HBRUSH, UpdateWindow};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, GetWindowTextLengthW,
-    GetWindowTextW, LoadCursorW, PostQuitMessage, RegisterClassW, SendMessageW, SetWindowTextW,
-    ShowWindow, TranslateMessage, HCURSOR, HICON, HMENU, MSG, SW_SHOW, WNDCLASSW,
-    WNDCLASS_STYLES, WINDOW_EX_STYLE, WINDOW_STYLE, IDC_ARROW,
+    GetWindowTextW, HCURSOR, HICON, HMENU, IDC_ARROW, LoadCursorW, MSG, PostQuitMessage,
+    RegisterClassW, SW_SHOW, SendMessageW, SetWindowTextW, ShowWindow, TranslateMessage,
+    WINDOW_EX_STYLE, WINDOW_STYLE, WNDCLASS_STYLES, WNDCLASSW,
 };
+use windows::core::PCWSTR;
 
 // --- Win32 constants (kept as raw numbers to avoid feature/typing churn) ---
 const WM_CREATE: u32 = 0x0001;
@@ -148,7 +148,7 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: 
             LRESULT(0)
         }
         WM_COMMAND => {
-            let id = (wparam.0 & 0xFFFF) as usize;
+            let id = wparam.0 & 0xFFFF;
             let code = ((wparam.0 >> 16) & 0xFFFF) as u32;
             on_command(id, code);
             LRESULT(0)
@@ -168,29 +168,30 @@ unsafe fn create_controls(parent: HWND) {
             .unwrap_or(std::ptr::null_mut()),
     );
 
-    let make = |class: &str, text: &str, style: u32, x: i32, y: i32, w: i32, h: i32, id: usize| -> isize {
-        let class = wide(class);
-        let text = wide(text);
-        let child = CreateWindowExW(
-            WINDOW_EX_STYLE(0),
-            PCWSTR(class.as_ptr()),
-            PCWSTR(text.as_ptr()),
-            WINDOW_STYLE(WS_CHILD | WS_VISIBLE | style),
-            x,
-            y,
-            w,
-            h,
-            Some(parent),
-            Some(HMENU(id as *mut c_void)),
-            Some(instance),
-            None,
-        );
-        // Never panic across the FFI boundary: fall back to a null handle.
-        match child {
-            Ok(h) => h.0 as isize,
-            Err(_) => 0,
-        }
-    };
+    let make =
+        |class: &str, text: &str, style: u32, x: i32, y: i32, w: i32, h: i32, id: usize| -> isize {
+            let class = wide(class);
+            let text = wide(text);
+            let child = CreateWindowExW(
+                WINDOW_EX_STYLE(0),
+                PCWSTR(class.as_ptr()),
+                PCWSTR(text.as_ptr()),
+                WINDOW_STYLE(WS_CHILD | WS_VISIBLE | style),
+                x,
+                y,
+                w,
+                h,
+                Some(parent),
+                Some(HMENU(id as *mut c_void)),
+                Some(instance),
+                None,
+            );
+            // Never panic across the FFI boundary: fall back to a null handle.
+            match child {
+                Ok(h) => h.0 as isize,
+                Err(_) => 0,
+            }
+        };
 
     let _ = make("STATIC", "Type:", 0, 15, 20, 40, 22, 0);
     let cat_box = make(
@@ -273,7 +274,10 @@ unsafe fn fill_units(category: Category, from_box: isize, to_box: isize) {
         add_combo_item(to_box, u);
     }
     set_combo_sel(from_box, 0);
-    set_combo_sel(to_box, 1.min(category.units().len().saturating_sub(1) as i32));
+    set_combo_sel(
+        to_box,
+        1.min(category.units().len().saturating_sub(1) as i32),
+    );
 }
 
 unsafe fn add_combo_item(combo: isize, text: &str) {
@@ -348,8 +352,8 @@ unsafe fn on_command(id: usize, code: u32) {
     let c = CTRL.with(|c| *c.borrow());
     match id {
         ID_CATEGORY if code == CBN_SELCHANGE => {
-            let idx = (combo_sel(c.category).max(0) as usize)
-                .min(ALL_CATEGORIES.len().saturating_sub(1));
+            let idx =
+                (combo_sel(c.category).max(0) as usize).min(ALL_CATEGORIES.len().saturating_sub(1));
             let category = ALL_CATEGORIES[idx];
             fill_units(category, c.from, c.to);
             recompute();
