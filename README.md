@@ -1,9 +1,13 @@
 # Convert
 
+> [!NOTE]
+> This project was made by **not6741** with the help of **DeepSeek**, written in **Rust**.
+> It uses the **MIT license** and is **fully FOSS** (free and open-source software).
+
 A small desktop unit-converter built in Rust with [`eframe`](https://crates.io/crates/eframe)/`egui`.
 
 Pick a category, choose the two units, type a value, and the result updates live as you
-type. It's a compact, single-file learning project — nothing more, nothing less.
+type. It's a compact learning project — nothing more, nothing less.
 
 ## Features
 
