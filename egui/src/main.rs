@@ -115,7 +115,13 @@ impl eframe::App for Converter {
                     units[self.to_index],
                     v,
                 );
-                ui.label(format!("= {} {}", fmt_num(result), units[self.to_index]));
+                let text = format!("{} {}", fmt_num(result), units[self.to_index]);
+                ui.horizontal(|ui| {
+                    ui.label(format!("= {text}"));
+                    if ui.button("Copy").clicked() {
+                        ui.ctx().copy_text(text.clone());
+                    }
+                });
             }
             Err(_) => {
                 if self.input.trim().is_empty() {

@@ -55,7 +55,8 @@ fn main() {
     let mut value = Input::new(100, 105, 200, 28, "Value:");
     value.set_value("1");
 
-    let mut result = Output::new(100, 150, 300, 28, "=");
+    let mut result = Output::new(100, 150, 250, 28, "=");
+    let mut copy = Button::new(360, 150, 70, 28, "Copy");
 
     // Populate the initial (Length) unit lists.
     for u in Category::Length.units() {
@@ -165,6 +166,14 @@ fn main() {
             from.set_value(f as i32);
             to.set_value(t as i32);
             refresh(&state, &input, &mut result);
+        });
+    }
+
+    // Copy the result to the clipboard.
+    {
+        let result = result.clone();
+        copy.set_callback(move |_| {
+            fltk::app::copy(&result.value());
         });
     }
 

@@ -37,8 +37,9 @@ The same app, three toolkits — identical features, wildly different footprints
 
 ## Features
 
-- Three categories: **Length**, **Weight**, **Temperature**.
-- Category picker, two unit dropdowns, and a swap button (`⇄`).
+- **Eight categories:** Length, Area, Volume, Weight, Speed, Time, Data, and Temperature.
+- Category picker, two unit dropdowns, a **Swap** button, and a **Copy** button that puts the
+  result on the clipboard.
 - **Live conversion** — the result updates on every keystroke.
 - The value box accepts **arithmetic expressions**, not just numbers: `2+3*4`,
   `(100-32)*5/9`, `sqrt(2)`, `pi*2`, `2^10`. Supports `+ - * / ^`, parentheses, unary minus,
@@ -78,16 +79,16 @@ Extra requirements:
 cargo test
 ```
 
-Covers length, weight, and temperature conversions, the identity case, number formatting, and
-the full arithmetic expression evaluator (precedence, associativity, functions, constants,
-and malformed input).
+Covers every category's conversions, the identity case, number formatting, and the full
+arithmetic expression evaluator (precedence, associativity, functions, constants, deeply
+nested input, and malformed input).
 
 ## How it works
 
 Most categories use a **convert-via-base-unit** approach: every unit is defined by how large
-it is relative to the category's base unit (metre for length, gram for weight), so converting
-reduces to `value * factor(from) / factor(to)`. Temperature is the special case — it has
-offsets as well as scale, so it funnels through Celsius instead.
+it is relative to the category's base unit (metre, square metre, litre, gram, metre/second,
+second, byte), so converting reduces to `value * factor(from) / factor(to)`. Temperature is
+the special case — it has offsets as well as scale, so it funnels through Celsius instead.
 
 Whatever you type is first run through the expression evaluator in
 [`core/src/math.rs`](core/src/math.rs); a plain number like `42` is just a trivial expression.

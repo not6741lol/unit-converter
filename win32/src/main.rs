@@ -28,9 +28,14 @@
 use convert_core::{ALL_CATEGORIES, Category, convert, fmt_num, math};
 use std::cell::RefCell;
 use std::ffi::c_void;
-use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::Foundation::{HANDLE, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::{HBRUSH, UpdateWindow};
+use windows::Win32::System::DataExchange::{
+    CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData,
+};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::System::Memory::{GMEM_MOVEABLE, GlobalAlloc, GlobalLock, GlobalUnlock};
+use windows::Win32::System::Ole::CF_UNICODETEXT;
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, GetWindowTextLengthW,
     GetWindowTextW, HCURSOR, HICON, HMENU, IDC_ARROW, LoadCursorW, MSG, PostQuitMessage,
@@ -67,6 +72,7 @@ const ID_TO: usize = 103;
 const ID_VALUE: usize = 104;
 const ID_RESULT: usize = 105;
 const ID_SWAP: usize = 106;
+const ID_COPY: usize = 107;
 
 #[derive(Default, Clone, Copy)]
 struct Controls {
@@ -249,7 +255,8 @@ unsafe fn create_controls(parent: HWND) {
     );
 
     let _ = make("STATIC", "=", 0, 15, 140, 20, 22, 0);
-    let result_box = make("STATIC", "", 0, 40, 140, 380, 24, ID_RESULT);
+    let result_box = make("STATIC", "", 0, 40, 140, 270, 24, ID_RESULT);
+    let _ = make("BUTTON", "Copy", WS_TABSTOP, 320, 139, 90, 26, ID_COPY);
 
     CTRL.with(|c| {
         *c.borrow_mut() = Controls {
@@ -318,6 +325,29 @@ unsafe fn set_text(control: isize, text: &str) {
     let _ = SetWindowTextW(hwnd(control), PCWSTR(t.as_ptr()));
 }
 
+/// Put `text` on the Windows clipboard as `CF_UNICODETEXT`.
+unsafe fn set_clipboard(text: &str) {
+    let data = wide(text); // UTF-16, including the NUL terminator
+    let bytes = data.len() * std::mem::size_of::<u16>();
+
+    if OpenClipboard(None).is_err() {
+        return;
+    }
+    let _ = EmptyClipboard();
+
+    if let Ok(mem) = GlobalAlloc(GMEM_MOVEABLE, bytes) {
+        let dst = GlobalLock(mem) as *mut u16;
+        if !dst.is_null() {
+            std::ptr::copy_nonoverlapping(data.as_ptr(), dst, data.len());
+            let _ = GlobalUnlock(mem);
+            // On success the system takes ownership of the memory.
+            let _ = SetClipboardData(CF_UNICODETEXT.0 as u32, Some(HANDLE(mem.0)));
+        }
+    }
+
+    let _ = CloseClipboard();
+}
+
 /// The whole app: read current widgets, convert, write the result label.
 unsafe fn recompute() {
     let c = CTRL.with(|c| *c.borrow());
@@ -366,6 +396,12 @@ unsafe fn on_command(id: usize, code: u32) {
             set_combo_sel(c.from, t);
             set_combo_sel(c.to, f);
             recompute();
+        }
+        ID_COPY if code == BN_CLICKED => {
+            let text = get_text(c.result);
+            if !text.is_empty() {
+                set_clipboard(&text);
+            }
         }
         _ => {}
     }
