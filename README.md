@@ -25,6 +25,14 @@ math, wildly different footprints.
 > **Do not take it seriously for its capability or reliability, and do not use it in
 > production.** It is intended **for research and investigation by developers only.**
 
+## Screenshots
+
+The same app, three toolkits — identical features, wildly different footprints:
+
+| egui · 4.46 MB | fltk · 2.01 MB | Win32 · 0.16 MB |
+|---|---|---|
+| ![egui](screenshots/egui.png) | ![fltk](screenshots/fltk.png) | ![win32](screenshots/win32.png) |
+
 ## Features
 
 - Three categories: **Length**, **Weight**, **Temperature**.
