@@ -8,7 +8,12 @@
 
 The same unit converter, built **three times in Rust** — once per GUI toolkit — to show how
 the size of a native desktop app changes with the framework you choose. Same features, same
-math, wildly different footprints.
+math, wildly different footprints. (The egui build is also compiled to **WebAssembly** for a
+browser demo.)
+
+**▶️ Live demo — running in your browser (WASM):** <https://not6741lol.github.io/unit-converter/>
+
+![Convert demo](screenshots/demo.gif)
 
 | Version | GUI toolkit | Release size | Platform | Notes |
 |---|---|---|---|---|
@@ -45,6 +50,7 @@ The same app, three toolkits — identical features, wildly different footprints
   `(100-32)*5/9`, `sqrt(2)`, `pi*2`, `2^10`. Supports `+ - * / ^`, parentheses, unary minus,
   the functions `sqrt abs sin cos tan ln log exp floor ceil round`, and the constants `pi`/`e`.
 - Results are trimmed of trailing zeros (`1000.000000` shows as `1000`).
+- **Runs in the browser too** — the same egui UI compiles to WebAssembly (see the live demo above).
 
 ## Repository layout
 
@@ -53,6 +59,7 @@ core/   shared library: conversion logic + expression evaluator (with tests)
 egui/   egui front-end   -> target/release/convert.exe
 fltk/   fltk front-end   -> target/release/convert-fltk.exe
 win32/  Win32 front-end  -> target/release/convert-win32.exe
+web/    WASM front-end   -> deployed to GitHub Pages (see web/build.ps1)
 ```
 
 ## Building
@@ -67,11 +74,25 @@ cargo build --release -p convert-win32  # win32 version
 
 Binaries are written to `target/release/`.
 
+Web (WASM) build:
+
+```sh
+rustup target add wasm32-unknown-unknown
+cargo install wasm-bindgen-cli --version 0.2.129
+cargo build --release --target wasm32-unknown-unknown -p convert-web
+wasm-bindgen --target web --out-dir web/dist --out-name convert_web \
+  target/wasm32-unknown-unknown/release/convert_web.wasm
+cp web/index.html web/dist/index.html   # then serve web/dist/
+```
+
+On Windows you can just run `web/build.ps1`.
+
 Extra requirements:
 
 - **fltk** needs **CMake** and a **C++ toolchain** at build time (it compiles the FLTK C++
   library). On Windows, the Visual Studio C++ build tools are enough.
 - **win32** needs nothing beyond Rust, but only builds/runs on Windows.
+- **web** needs the `wasm32-unknown-unknown` target and `wasm-bindgen-cli` (see above).
 
 ## Tests
 
