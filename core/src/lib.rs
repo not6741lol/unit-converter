@@ -106,6 +106,14 @@ pub fn fmt_num(n: f64) -> String {
     if !n.is_finite() {
         return "-".to_string();
     }
+    if n == 0.0 {
+        return "0".to_string();
+    }
+    // Very small (but non-zero) values would round to "0" with six fixed
+    // decimals, which is misleading. Show them in scientific notation instead.
+    if n.abs() < 1e-6 {
+        return format!("{n:e}");
+    }
     let s = format!("{n:.6}");
     let trimmed = s.trim_end_matches('0').trim_end_matches('.');
     if trimmed.is_empty() || trimmed == "-" || trimmed == "-0" {
@@ -174,5 +182,9 @@ mod tests {
         assert_eq!(fmt_num(0.0), "0");
         assert_eq!(fmt_num(-0.0), "0");
         assert_eq!(fmt_num(1234.5678), "1234.5678");
+        // Small non-zero values must not collapse to "0".
+        assert_eq!(fmt_num(1e-9), "1e-9");
+        assert_eq!(fmt_num(-0.0000004), "-4e-7");
+        assert_ne!(fmt_num(1e-9), "0");
     }
 }

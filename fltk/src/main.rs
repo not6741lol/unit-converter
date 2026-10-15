@@ -20,8 +20,9 @@ struct State {
 fn refresh(state: &Rc<RefCell<State>>, input: &Input, result: &mut Output) {
     let s = state.borrow();
     let units = s.category.units();
-    let f = units[s.from.min(units.len() - 1)];
-    let t = units[s.to.min(units.len() - 1)];
+    let last = units.len().saturating_sub(1);
+    let f = units[s.from.min(last)];
+    let t = units[s.to.min(last)];
     let text = input.value();
 
     let out = match math::eval(&text) {
@@ -47,9 +48,9 @@ fn main() {
     }
     cat.set_value(0);
 
-    let mut from = Choice::new(20, 62, 150, 28, "From:");
-    let mut swap = Button::new(180, 62, 30, 28, "⇄");
-    let mut to = Choice::new(220, 62, 140, 28, "To:");
+    let mut from = Choice::new(60, 62, 140, 28, "From:");
+    let mut swap = Button::new(205, 62, 30, 28, "⇄");
+    let mut to = Choice::new(265, 62, 100, 28, "To:");
 
     let mut value = Input::new(90, 105, 160, 28, "Value:");
     value.set_value("1");
@@ -83,13 +84,14 @@ fn main() {
         let input = value.clone();
         let mut result = result.clone();
         cat.set_callback(move |c| {
-            let idx = (c.value().max(0) as usize).min(ALL_CATEGORIES.len() - 1);
+            let idx = (c.value().max(0) as usize).min(ALL_CATEGORIES.len().saturating_sub(1));
             let newcat = ALL_CATEGORIES[idx];
+            let t = 1.min(newcat.units().len().saturating_sub(1));
             {
                 let mut s = state.borrow_mut();
                 s.category = newcat;
                 s.from = 0;
-                s.to = 1.min(newcat.units().len() - 1);
+                s.to = t;
             }
             from.clear();
             for u in newcat.units() {
@@ -100,7 +102,7 @@ fn main() {
             for u in newcat.units() {
                 to.add_choice(u);
             }
-            to.set_value(1);
+            to.set_value(t as i32);
             refresh(&state, &input, &mut result);
         });
     }
@@ -112,7 +114,8 @@ fn main() {
         let mut result = result.clone();
         let mut handle = from.clone();
         handle.set_callback(move |c| {
-            state.borrow_mut().from = c.value().max(0) as usize;
+            let len = state.borrow().category.units().len();
+            state.borrow_mut().from = (c.value().max(0) as usize).min(len.saturating_sub(1));
             refresh(&state, &input, &mut result);
         });
     }
@@ -124,7 +127,8 @@ fn main() {
         let mut result = result.clone();
         let mut handle = to.clone();
         handle.set_callback(move |c| {
-            state.borrow_mut().to = c.value().max(0) as usize;
+            let len = state.borrow().category.units().len();
+            state.borrow_mut().to = (c.value().max(0) as usize).min(len.saturating_sub(1));
             refresh(&state, &input, &mut result);
         });
     }

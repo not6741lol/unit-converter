@@ -40,8 +40,9 @@ impl eframe::App for Converter {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let units = self.category.units();
         // Keep indices in range if the unit list changed length.
-        self.from_index = self.from_index.min(units.len() - 1);
-        self.to_index = self.to_index.min(units.len() - 1);
+        let last = units.len().saturating_sub(1);
+        self.from_index = self.from_index.min(last);
+        self.to_index = self.to_index.min(last);
 
         ui.add_space(4.0);
         ui.heading("Convert");
@@ -66,7 +67,7 @@ impl eframe::App for Converter {
                 });
             if switched {
                 self.from_index = 0;
-                self.to_index = 1.min(self.category.units().len() - 1);
+                self.to_index = 1.min(self.category.units().len().saturating_sub(1));
             }
         });
 

@@ -11,7 +11,7 @@ math, wildly different footprints.
 | Version | GUI toolkit | Release size | Platform | Notes |
 |---|---|---|---|---|
 | [`egui/`](egui) | `eframe` / `egui` | **4.46 MB** | Windows · macOS · Linux | Immediate-mode, modern look |
-| [`fltk/`](fltk) | `fltk-rs` | **2.01 MB** | Windows · macOS · Linux | Native widgets, old-school look |
+| [`fltk/`](fltk) | `fltk-rs` | **2.02 MB** | Windows · macOS · Linux | Native widgets, old-school look |
 | [`win32/`](win32) | raw Win32 API | **0.16 MB** | Windows only | No GUI framework at all |
 
 > All three share the exact same conversion logic and expression evaluator, which live in a
@@ -29,7 +29,7 @@ math, wildly different footprints.
 
 The same app, three toolkits — identical features, wildly different footprints:
 
-| egui · 4.46 MB | fltk · 2.01 MB | Win32 · 0.16 MB |
+| egui · 4.46 MB | fltk · 2.02 MB | Win32 · 0.16 MB |
 |---|---|---|
 | ![egui](screenshots/egui.png) | ![fltk](screenshots/fltk.png) | ![win32](screenshots/win32.png) |
 

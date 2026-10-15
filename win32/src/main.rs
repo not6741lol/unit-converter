@@ -52,6 +52,7 @@ const CBS_DROPDOWNLIST: u32 = 0x0003;
 const CBS_HASSTRINGS: u32 = 0x0200;
 
 const CBN_SELCHANGE: u32 = 1;
+const BN_CLICKED: u32 = 0;
 const EN_CHANGE: u32 = 0x0300;
 
 const CB_ADDSTRING: u32 = 0x0143;
@@ -65,6 +66,7 @@ const ID_FROM: usize = 102;
 const ID_TO: usize = 103;
 const ID_VALUE: usize = 104;
 const ID_RESULT: usize = 105;
+const ID_SWAP: usize = 106;
 
 #[derive(Default, Clone, Copy)]
 struct Controls {
@@ -104,10 +106,13 @@ fn main() {
             WINDOW_EX_STYLE(0),
             PCWSTR(class_name.as_ptr()),
             PCWSTR(title.as_ptr()),
-            WINDOW_STYLE(0x00CF_0000), // WS_OVERLAPPEDWINDOW
+            // Fixed-size window: WS_OVERLAPPEDWINDOW minus the thick frame and
+            // maximize box, so the absolutely-positioned controls can't be
+            // clipped by resizing.
+            WINDOW_STYLE(0x00CA_0000),
             100,
             100,
-            400,
+            460,
             260,
             None,
             None,
@@ -157,7 +162,11 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: 
 }
 
 unsafe fn create_controls(parent: HWND) {
-    let instance = HINSTANCE(GetModuleHandleW(None).unwrap().0);
+    let instance = HINSTANCE(
+        GetModuleHandleW(None)
+            .map(|m| m.0)
+            .unwrap_or(std::ptr::null_mut()),
+    );
 
     let make = |class: &str, text: &str, style: u32, x: i32, y: i32, w: i32, h: i32, id: usize| -> isize {
         let class = wide(class);
@@ -175,9 +184,12 @@ unsafe fn create_controls(parent: HWND) {
             Some(HMENU(id as *mut c_void)),
             Some(instance),
             None,
-        )
-        .unwrap();
-        child.0 as isize
+        );
+        // Never panic across the FFI boundary: fall back to a null handle.
+        match child {
+            Ok(h) => h.0 as isize,
+            Err(_) => 0,
+        }
     };
 
     let _ = make("STATIC", "Type:", 0, 15, 20, 40, 22, 0);
@@ -187,7 +199,7 @@ unsafe fn create_controls(parent: HWND) {
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_TABSTOP,
         60,
         18,
-        250,
+        300,
         200,
         ID_CATEGORY,
     );
@@ -203,19 +215,22 @@ unsafe fn create_controls(parent: HWND) {
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_TABSTOP,
         60,
         56,
-        160,
+        150,
         200,
         ID_FROM,
     );
 
-    let _ = make("STATIC", "To:", 0, 230, 58, 25, 22, 0);
+    // Swap button — the other front-ends have one too.
+    let _ = make("BUTTON", "Swap", WS_TABSTOP, 215, 56, 44, 24, ID_SWAP);
+
+    let _ = make("STATIC", "To:", 0, 264, 58, 22, 22, 0);
     let to_box = make(
         "COMBOBOX",
         "",
         CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_TABSTOP,
-        255,
+        290,
         56,
-        110,
+        130,
         200,
         ID_TO,
     );
@@ -227,13 +242,13 @@ unsafe fn create_controls(parent: HWND) {
         ES_AUTOHSCROLL | WS_TABSTOP,
         60,
         96,
-        250,
+        300,
         24,
         ID_VALUE,
     );
 
     let _ = make("STATIC", "=", 0, 15, 140, 20, 22, 0);
-    let result_box = make("STATIC", "", 0, 40, 140, 320, 24, ID_RESULT);
+    let result_box = make("STATIC", "", 0, 40, 140, 380, 24, ID_RESULT);
 
     CTRL.with(|c| {
         *c.borrow_mut() = Controls {
@@ -258,7 +273,7 @@ unsafe fn fill_units(category: Category, from_box: isize, to_box: isize) {
         add_combo_item(to_box, u);
     }
     set_combo_sel(from_box, 0);
-    set_combo_sel(to_box, 1.min(category.units().len() as i32 - 1));
+    set_combo_sel(to_box, 1.min(category.units().len().saturating_sub(1) as i32));
 }
 
 unsafe fn add_combo_item(combo: isize, text: &str) {
@@ -306,13 +321,14 @@ unsafe fn recompute() {
         return;
     }
     let cat_idx = combo_sel(c.category).max(0) as usize;
-    let category = ALL_CATEGORIES[cat_idx.min(ALL_CATEGORIES.len() - 1)];
+    let category = ALL_CATEGORIES[cat_idx.min(ALL_CATEGORIES.len().saturating_sub(1))];
     let units = category.units();
 
     let from_idx = combo_sel(c.from).max(0) as usize;
     let to_idx = combo_sel(c.to).max(0) as usize;
-    let from = units[from_idx.min(units.len() - 1)];
-    let to = units[to_idx.min(units.len() - 1)];
+    let last = units.len().saturating_sub(1);
+    let from = units[from_idx.min(last)];
+    let to = units[to_idx.min(last)];
 
     let text = get_text(c.value);
     let out = match math::eval(&text) {
@@ -333,13 +349,20 @@ unsafe fn on_command(id: usize, code: u32) {
     match id {
         ID_CATEGORY if code == CBN_SELCHANGE => {
             let idx = (combo_sel(c.category).max(0) as usize)
-                .min(ALL_CATEGORIES.len() - 1);
+                .min(ALL_CATEGORIES.len().saturating_sub(1));
             let category = ALL_CATEGORIES[idx];
             fill_units(category, c.from, c.to);
             recompute();
         }
         ID_FROM | ID_TO if code == CBN_SELCHANGE => recompute(),
         ID_VALUE if code == EN_CHANGE => recompute(),
+        ID_SWAP if code == BN_CLICKED => {
+            let f = combo_sel(c.from);
+            let t = combo_sel(c.to);
+            set_combo_sel(c.from, t);
+            set_combo_sel(c.to, f);
+            recompute();
+        }
         _ => {}
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "convert-fltk"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 description = "Unit converter GUI built with fltk-rs (native, tiny)."
 license = "MIT"

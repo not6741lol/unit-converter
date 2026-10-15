@@ -31,7 +31,11 @@
 /// where the input failed to parse.
 pub fn eval(input: &str) -> Result<f64, String> {
     let tokens = tokenize(input)?;
-    let mut parser = Parser { tokens, pos: 0 };
+    let mut parser = Parser {
+        tokens,
+        pos: 0,
+        depth: 0,
+    };
     let value = parser.expr()?;
     match parser.peek() {
         Token::Eof => Ok(value),
@@ -88,8 +92,9 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
     while i < chars.len() {
         let c = chars[i];
         match c {
-            // Whitespace is ignored anywhere.
-            ' ' | '\t' | '\n' | '\r' => i += 1,
+            // Whitespace is ignored anywhere (including Unicode spaces, which
+            // are common when pasting from web pages or spreadsheets).
+            _ if c.is_whitespace() => i += 1,
             '+' => {
                 tokens.push(Token::Plus);
                 i += 1;
@@ -175,7 +180,13 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
 struct Parser {
     tokens: Vec<Token>,
     pos: usize,
+    depth: usize,
 }
+
+/// Maximum nesting depth (parentheses, unary chains, or nested calls) before we
+/// bail out. Guards against a stack overflow / process abort from pathological
+/// input such as thousands of `(` characters.
+const MAX_DEPTH: usize = 128;
 
 impl Parser {
     /// Peek at the current token. Returns `Eof` past the end so we never index
@@ -228,8 +239,17 @@ impl Parser {
     }
 
     /// `unary := ('+' | '-') unary | power`
+    ///
+    /// Every recursive path in the grammar funnels through here, so this is
+    /// where the depth limit is enforced: runaway nesting becomes an `Err`
+    /// instead of a stack overflow (which would abort the whole process).
     fn unary(&mut self) -> Result<f64, String> {
-        match self.peek() {
+        self.depth += 1;
+        if self.depth > MAX_DEPTH {
+            self.depth -= 1;
+            return Err("expression nested too deeply".to_string());
+        }
+        let result = match self.peek() {
             Token::Minus => {
                 self.advance();
                 Ok(-self.unary()?)
@@ -239,7 +259,9 @@ impl Parser {
                 self.unary()
             }
             _ => self.power(),
-        }
+        };
+        self.depth -= 1;
+        result
     }
 
     /// `power := primary ('^' unary)?`
@@ -498,5 +520,23 @@ mod tests {
         is_err("nope");
         is_err("1@@2");
         is_err("1..2");
+    }
+
+    #[test]
+    fn deep_nesting_is_rejected_not_crashed() {
+        // Without a depth guard these overflow the stack and abort the process.
+        let parens = "(".repeat(10_000) + &")".repeat(10_000);
+        assert!(eval(&parens).is_err());
+        let signs = format!("{}1", "-".repeat(10_000));
+        assert!(eval(&signs).is_err());
+        let nested = "sqrt(".repeat(10_000);
+        assert!(eval(&nested).is_err());
+        // Reasonable nesting still works.
+        assert_eq!(eval("((((1+2))))").unwrap(), 3.0);
+    }
+
+    #[test]
+    fn unicode_whitespace_is_ignored() {
+        assert_eq!(eval("1\u{00A0}+\u{2003}2").unwrap(), 3.0);
     }
 }
