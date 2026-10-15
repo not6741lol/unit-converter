@@ -1,5 +1,7 @@
 # Convert
 
+[![CI](https://github.com/not6741lol/unit-converter/actions/workflows/ci.yml/badge.svg)](https://github.com/not6741lol/unit-converter/actions/workflows/ci.yml)
+
 > [!NOTE]
 > This project was made by **not6741** with the help of **DeepSeek**, written in **Rust**.
 > It uses the **MIT license** and is **fully FOSS** (free and open-source software).
