@@ -2,6 +2,9 @@
 name = "convert"
 version = "0.1.0"
 edition = "2024"
+description = "A tiny, fast unit converter GUI with live arithmetic expression input."
+license = "MIT"
+repository = "https://github.com/not6741lol/unit-converter"
 
 [dependencies]
 eframe = "0.37.0"
