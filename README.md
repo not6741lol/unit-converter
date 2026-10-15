@@ -17,6 +17,14 @@ math, wildly different footprints.
 > All three share the exact same conversion logic and expression evaluator, which live in a
 > single [`core/`](core) crate — so there is one place to fix bugs and one test suite.
 
+> [!WARNING]
+> **The `win32/` version is ultra-experimental.** It exists purely to demonstrate what is
+> *technically possible* in terms of binary size — **not** as a serious or maintainable
+> application. It is Windows-only, written directly against the raw Win32 API with `unsafe`,
+> and has received no hardening, no accessibility work, and no real testing beyond "it opens".
+> **Do not take it seriously for its capability or reliability, and do not use it in
+> production.** It is intended **for research and investigation by developers only.**
+
 ## Features
 
 - Three categories: **Length**, **Weight**, **Temperature**.

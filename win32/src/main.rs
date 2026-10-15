@@ -8,6 +8,22 @@
 //!
 //! No GUI framework at all — just the raw operating-system controls, which is
 //! why the resulting binary is a fraction of the size of the others.
+//!
+//! # Disclaimer
+//!
+//! **This is an ultra-experimental proof of concept.** Its only purpose is to
+//! show how small a native GUI can be when you skip every framework and talk
+//! to the OS directly. It is *not* a serious, maintainable application:
+//!
+//! * It is **Windows-only** and written with `unsafe` all over the place.
+//! * It has received **no hardening, no accessibility work, and no real
+//!   testing** beyond "the window opens".
+//! * It should **not** be taken seriously for its capability or reliability,
+//!   and must **not** be used in production.
+//!
+//! If you want something to actually use, reach for the `egui` or `fltk`
+//! front-ends. This one is **for research and investigation by developers
+//! only.**
 
 use convert_core::{convert, fmt_num, math, Category, ALL_CATEGORIES};
 use std::cell::RefCell;
