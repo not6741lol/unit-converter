@@ -1,3 +1,7 @@
+// In release builds, hide the console window on Windows (run as a GUI app).
+// Debug builds keep the console so `println!` and panics are visible.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use eframe::egui;
 
 mod math;
