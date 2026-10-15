@@ -40,22 +40,22 @@ fn refresh(state: &Rc<RefCell<State>>, input: &Input, result: &mut Output) {
 
 fn main() {
     let app = app::App::default();
-    let mut wind = Window::new(120, 120, 380, 220, "Convert");
+    let mut wind = Window::new(120, 120, 440, 220, "Convert");
 
-    let mut cat = Choice::new(90, 20, 220, 28, "Type:");
+    let mut cat = Choice::new(100, 20, 250, 28, "Type:");
     for c in ALL_CATEGORIES {
         cat.add_choice(c.label());
     }
     cat.set_value(0);
 
-    let mut from = Choice::new(60, 62, 140, 28, "From:");
-    let mut swap = Button::new(205, 62, 30, 28, "⇄");
-    let mut to = Choice::new(265, 62, 100, 28, "To:");
+    let mut from = Choice::new(60, 62, 130, 28, "From:");
+    let mut swap = Button::new(195, 62, 50, 28, "Swap");
+    let mut to = Choice::new(275, 62, 130, 28, "To:");
 
-    let mut value = Input::new(90, 105, 160, 28, "Value:");
+    let mut value = Input::new(100, 105, 200, 28, "Value:");
     value.set_value("1");
 
-    let mut result = Output::new(90, 150, 260, 28, "=");
+    let mut result = Output::new(100, 150, 300, 28, "=");
 
     // Populate the initial (Length) unit lists.
     for u in Category::Length.units() {

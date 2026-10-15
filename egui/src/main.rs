@@ -83,7 +83,7 @@ impl eframe::App for Converter {
                     }
                 });
 
-            if ui.button("⇄").clicked() {
+            if ui.button("Swap").clicked() {
                 std::mem::swap(&mut self.from_index, &mut self.to_index);
             }
 
