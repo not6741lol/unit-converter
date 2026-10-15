@@ -7,4 +7,13 @@ license = "MIT"
 repository = "https://github.com/not6741lol/unit-converter"
 
 [dependencies]
-eframe = "0.37.0"
+# `glow` (OpenGL) instead of the default `wgpu` backend: much smaller binary,
+# since wgpu drags in the naga shader compiler.
+eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"] }
+
+[profile.release]
+opt-level = "z"    # optimise for size
+lto = true         # link-time optimisation
+codegen-units = 1  # better optimisation, slower to build
+panic = "abort"    # drop unwinding machinery
+strip = true       # strip debug symbols
