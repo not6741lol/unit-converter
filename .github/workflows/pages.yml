@@ -1,0 +1,65 @@
+name: Deploy web demo to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "web/**"
+      - "core/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust (with wasm target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install wasm-bindgen-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen@0.2.129
+
+      - name: Build WASM
+        run: cargo build --release --target wasm32-unknown-unknown -p convert-web
+
+      - name: Generate JS glue
+        run: |
+          mkdir -p web/dist
+          wasm-bindgen --target web --out-dir web/dist \
+            --out-name convert_web \
+            target/wasm32-unknown-unknown/release/convert_web.wasm
+          cp web/index.html web/dist/index.html
+          touch web/dist/.nojekyll
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

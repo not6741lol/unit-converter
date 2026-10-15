@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["core", "egui", "fltk", "win32"]
+members = ["core", "egui", "fltk", "win32", "web"]
 
 # Applied to every binary in the workspace: optimise hard for size.
 [profile.release]

@@ -1,0 +1,20 @@
+[package]
+name = "convert-web"
+version = "0.3.0"
+edition = "2024"
+description = "Web (WASM) build of the unit converter, rendered with egui."
+license = "MIT"
+repository = "https://github.com/not6741lol/unit-converter"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# All real dependencies are wasm-only, so the desktop workspace build treats
+# this crate as empty.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+convert-core = { path = "../core" }
+eframe = { version = "0.37.0", default-features = false, features = ["glow", "default_fonts"] }
+log = "0.4"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["HtmlCanvasElement"] }
