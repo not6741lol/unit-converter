@@ -83,9 +83,15 @@ cargo build --release --target wasm32-unknown-unknown -p convert-web
 wasm-bindgen --target web --out-dir web/dist --out-name convert_web \
   target/wasm32-unknown-unknown/release/convert_web.wasm
 cp web/index.html web/dist/index.html   # then serve web/dist/
+
+# Optional: shrink the .wasm (~9%) with Binaryen's wasm-opt:
+wasm-opt --enable-bulk-memory --enable-bulk-memory-opt \
+  --enable-nontrapping-float-to-int --enable-reference-types \
+  --enable-mutable-globals \
+  -Oz web/dist/convert_web_bg.wasm -o web/dist/convert_web_bg.wasm
 ```
 
-On Windows you can just run `web/build.ps1`.
+On Windows you can just run `web/build.ps1` (it also runs `wasm-opt` when available).
 
 Extra requirements:
 
@@ -93,6 +99,7 @@ Extra requirements:
   library). On Windows, the Visual Studio C++ build tools are enough.
 - **win32** needs nothing beyond Rust, but only builds/runs on Windows.
 - **web** needs the `wasm32-unknown-unknown` target and `wasm-bindgen-cli` (see above).
+  Binaryen's `wasm-opt` is optional but recommended — it shaves ~9% off the `.wasm`.
 
 ## Tests
 
