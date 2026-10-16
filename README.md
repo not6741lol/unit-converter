@@ -1,6 +1,10 @@
 # Convert
 
-[![CI](https://github.com/not6741lol/unit-converter/actions/workflows/ci.yml/badge.svg)](https://github.com/not6741lol/unit-converter/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/not6741lol/unit-converter?label=release&color=blue)](https://github.com/not6741lol/unit-converter/releases)
+[![build](https://github.com/not6741lol/unit-converter/actions/workflows/ci.yml/badge.svg)](https://github.com/not6741lol/unit-converter/actions/workflows/ci.yml)
+[![Made with Rust](https://img.shields.io/badge/Made%20with-Rust-orange?logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![demo](https://img.shields.io/badge/demo-live-brightgreen?logo=webassembly)](https://not6741lol.github.io/unit-converter/)
+[![license](https://img.shields.io/github/license/not6741lol/unit-converter?color=blue)](LICENSE)
 
 > [!NOTE]
 > This project was made by **not6741** with the help of **DeepSeek**, written in **Rust**.
