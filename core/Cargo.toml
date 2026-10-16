@@ -1,7 +1,16 @@
 [package]
 name = "convert-core"
-version = "0.4.0"
+version = "1.0.0"
 edition = "2024"
-description = "Shared conversion logic and arithmetic expression evaluator for the Convert app."
+description = "Shared conversion logic, arithmetic evaluator and optional egui UI for the Convert app."
 license = "MIT"
 repository = "https://github.com/not6741lol/unit-converter"
+
+[dependencies]
+# Only needed for the shared egui UI (used by the native `egui` front-end and
+# the web build). The `fltk` and `win32` front-ends use the library without it.
+egui = { version = "0.37.0", optional = true }
+
+[features]
+# Exposes `convert_core::ui`, the egui drawing shared by the egui and web builds.
+ui = ["dep:egui"]

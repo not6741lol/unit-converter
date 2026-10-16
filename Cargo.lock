@@ -232,7 +232,7 @@ dependencies = [
 
 [[package]]
 name = "convert"
-version = "0.4.0"
+version = "1.0.0"
 dependencies = [
  "convert-core",
  "eframe",
@@ -240,11 +240,14 @@ dependencies = [
 
 [[package]]
 name = "convert-core"
-version = "0.4.0"
+version = "1.0.0"
+dependencies = [
+ "egui",
+]
 
 [[package]]
 name = "convert-fltk"
-version = "0.4.0"
+version = "1.0.0"
 dependencies = [
  "convert-core",
  "fltk",
@@ -252,7 +255,7 @@ dependencies = [
 
 [[package]]
 name = "convert-web"
-version = "0.4.0"
+version = "1.0.0"
 dependencies = [
  "convert-core",
  "eframe",
@@ -264,7 +267,7 @@ dependencies = [
 
 [[package]]
 name = "convert-win32"
-version = "0.4.0"
+version = "1.0.0"
 dependencies = [
  "convert-core",
  "windows",

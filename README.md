@@ -17,12 +17,13 @@ browser demo.)
 
 | Version | GUI toolkit | Release size | Platform | Notes |
 |---|---|---|---|---|
-| [`egui/`](egui) | `eframe` / `egui` | **4.46 MB** | Windows · macOS · Linux | Immediate-mode, modern look |
-| [`fltk/`](fltk) | `fltk-rs` | **2.02 MB** | Windows · macOS · Linux | Native widgets, old-school look |
-| [`win32/`](win32) | raw Win32 API | **0.16 MB** | Windows only | No GUI framework at all |
+| [`egui/`](egui) | `eframe` / `egui` | **4.5 MB** | Windows · macOS · Linux | Immediate-mode, modern look |
+| [`fltk/`](fltk) | `fltk-rs` | **2.2 MB** | Windows · macOS · Linux | Native widgets, old-school look |
+| [`win32/`](win32) | raw Win32 API | **0.19 MB** | Windows only | No GUI framework at all |
 
-> All three share the exact same conversion logic and expression evaluator, which live in a
-> single [`core/`](core) crate — so there is one place to fix bugs and one test suite.
+> All of them share the exact same conversion logic, expression evaluator and UI behaviour,
+> which live in a single [`core/`](core) crate — so there is one place to fix bugs and one
+> test suite.
 
 > [!WARNING]
 > **The `win32/` version is ultra-experimental.** It exists purely to demonstrate what is
@@ -36,26 +37,42 @@ browser demo.)
 
 The same app, three toolkits — identical features, wildly different footprints:
 
-| egui · 4.46 MB | fltk · 2.02 MB | Win32 · 0.16 MB |
+| egui · 4.5 MB | fltk · 2.2 MB | Win32 · 0.19 MB |
 |---|---|---|
 | ![egui](screenshots/egui.png) | ![fltk](screenshots/fltk.png) | ![win32](screenshots/win32.png) |
 
 ## Features
 
-- **Eight categories:** Length, Area, Volume, Weight, Speed, Time, Data, and Temperature.
-- Category picker, two unit dropdowns, a **Swap** button, and a **Copy** button that puts the
-  result on the clipboard.
+- **16 categories:** Length, Area, Volume, Weight, Speed, Acceleration, Time, Frequency,
+  Temperature, Pressure, Energy, Power, Force, Angle, Illuminance, and Data — with a couple of
+  hundred units in total.
+- **Calculator mode:** the whole app also works as a plain calculator, with no units at all —
+  type `1 + 1` and get `2`.
 - **Live conversion** — the result updates on every keystroke.
-- The value box accepts **arithmetic expressions**, not just numbers: `2+3*4`,
-  `(100-32)*5/9`, `sqrt(2)`, `pi*2`, `2^10`. Supports `+ - * / ^`, parentheses, unary minus,
-  the functions `sqrt abs sin cos tan ln log exp floor ceil round`, and the constants `pi`/`e`.
-- Results are trimmed of trailing zeros (`1000.000000` shows as `1000`).
-- **Runs in the browser too** — the same egui UI compiles to WebAssembly (see the live demo above).
+- **Search box** to filter the category list.
+- **History and favourites** — save a conversion with one click, then click it to bring it
+  back.
+- **Number format** — automatic, a fixed number of decimals (0–6), or scientific notation.
+- **Light / dark theme** (egui, fltk and web; the Win32 build follows the system theme).
+- **Swap** and **Copy** (puts the result on the clipboard).
+- The value box accepts **arithmetic expressions**, not just numbers:
+
+  | | |
+  |---|---|
+  | Operators | `+ - * / % ^` and parentheses (`^` is right-associative) |
+  | Functions | `sqrt cbrt abs sign sin cos tan asin acos atan sinh cosh tanh asinh acosh atanh ln log log2 exp exp2 floor ceil round trunc fract deg rad recip` |
+  | Constants | `pi`, `tau`, `e`, `phi` |
+
+  So `2+3*4`, `(100-32)*5/9`, `sqrt(2)`, `2^10`, `50%7`, `sin(pi/2)` and `12/log2(8)` all work.
+- Results are trimmed of trailing zeros (`1000.000000` shows as `1000`), and very large or
+  very small numbers switch to scientific notation automatically.
+- **Runs in the browser too** — the same egui UI compiles to WebAssembly (see the live demo
+  above).
 
 ## Repository layout
 
 ```
-core/   shared library: conversion logic + expression evaluator (with tests)
+core/   shared library: conversion logic, expression evaluator, and the egui UI (with tests)
 egui/   egui front-end   -> target/release/convert.exe
 fltk/   fltk front-end   -> target/release/convert-fltk.exe
 win32/  Win32 front-end  -> target/release/convert-win32.exe
@@ -107,22 +124,26 @@ Extra requirements:
 cargo test
 ```
 
-Covers every category's conversions, the identity case, number formatting, and the full
-arithmetic expression evaluator (precedence, associativity, functions, constants, deeply
-nested input, and malformed input).
+Covers every category's conversions, the identity case, number formatting, the UI state
+machine (modes, search, history, favourites), and the full arithmetic expression evaluator
+(precedence, associativity, functions, constants, deeply nested input, and malformed input).
 
 ## How it works
 
 Most categories use a **convert-via-base-unit** approach: every unit is defined by how large
 it is relative to the category's base unit (metre, square metre, litre, gram, metre/second,
-second, byte), so converting reduces to `value * factor(from) / factor(to)`. Temperature is
-the special case — it has offsets as well as scale, so it funnels through Celsius instead.
+second, byte, pascal, joule, watt, newton, radian, lux, …), so converting reduces to
+`value * factor(from) / factor(to)`. Temperature is the special case — it has offsets as well
+as scale, so it funnels through Celsius instead.
 
 Whatever you type is first run through the expression evaluator in
 [`core/src/math.rs`](core/src/math.rs); a plain number like `42` is just a trivial expression.
 
-The three front-ends are deliberately thin: they only wire widgets to the shared `core` API,
-which is what makes them easy to compare.
+All of the app's behaviour (modes, category search, history, favourites, clipboard text) lives
+in [`core/src/app.rs`](core/src/app.rs), and the egui interface itself lives in
+[`core/src/ui.rs`](core/src/ui.rs) — which is why the native egui build and the WebAssembly
+build are byte-for-byte the same UI. The `fltk` and `win32` front-ends are deliberately thin:
+they only wire their own widgets to that shared state.
 
 ## License
 

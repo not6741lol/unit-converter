@@ -25,7 +25,8 @@
 //! front-ends. This one is **for research and investigation by developers
 //! only.**
 
-use convert_core::{ALL_CATEGORIES, Category, convert, fmt_num, math};
+use convert_core::app::App;
+use convert_core::{Mode, NumFormat};
 use std::cell::RefCell;
 use std::ffi::c_void;
 use windows::Win32::Foundation::{HANDLE, HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
@@ -39,7 +40,7 @@ use windows::Win32::System::Ole::CF_UNICODETEXT;
 use windows::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, GetWindowTextLengthW,
     GetWindowTextW, HCURSOR, HICON, HMENU, IDC_ARROW, LoadCursorW, MSG, PostQuitMessage,
-    RegisterClassW, SW_SHOW, SendMessageW, SetWindowTextW, ShowWindow, TranslateMessage,
+    RegisterClassW, SW_HIDE, SW_SHOW, SendMessageW, SetWindowTextW, ShowWindow, TranslateMessage,
     WINDOW_EX_STYLE, WINDOW_STYLE, WNDCLASS_STYLES, WNDCLASSW,
 };
 use windows::core::PCWSTR;
@@ -52,39 +53,70 @@ const WM_COMMAND: u32 = 0x0111;
 const WS_CHILD: u32 = 0x4000_0000;
 const WS_VISIBLE: u32 = 0x1000_0000;
 const WS_TABSTOP: u32 = 0x0001_0000;
+const WS_BORDER: u32 = 0x0080_0000;
+const WS_VSCROLL: u32 = 0x0020_0000;
 const ES_AUTOHSCROLL: u32 = 0x0080;
 const CBS_DROPDOWNLIST: u32 = 0x0003;
 const CBS_HASSTRINGS: u32 = 0x0200;
+const LBS_NOTIFY: u32 = 0x0001;
+const LBS_NOINTEGRALHEIGHT: u32 = 0x0100;
 
+// Notification codes (CBN_SELCHANGE, LBN_SELCHANGE and BN_CLICKED are all 1/0).
 const CBN_SELCHANGE: u32 = 1;
+const LBN_SELCHANGE: u32 = 1;
 const BN_CLICKED: u32 = 0;
 const EN_CHANGE: u32 = 0x0300;
 
+// Messages.
 const CB_ADDSTRING: u32 = 0x0143;
 const CB_GETCURSEL: u32 = 0x0147;
 const CB_SETCURSEL: u32 = 0x014E;
 const CB_RESETCONTENT: u32 = 0x014B;
+const LB_ADDSTRING: u32 = 0x0180;
+const LB_RESETCONTENT: u32 = 0x0184;
+const LB_GETCURSEL: u32 = 0x0188;
 
 // Control IDs.
-const ID_CATEGORY: usize = 101;
-const ID_FROM: usize = 102;
-const ID_TO: usize = 103;
-const ID_VALUE: usize = 104;
-const ID_RESULT: usize = 105;
-const ID_SWAP: usize = 106;
-const ID_COPY: usize = 107;
+const ID_MODE: usize = 100;
+const ID_SEARCH: usize = 101;
+const ID_CATEGORY: usize = 102;
+const ID_FROM: usize = 103;
+const ID_TO: usize = 104;
+const ID_SWAP: usize = 105;
+const ID_VALUE: usize = 106;
+const ID_FORMAT: usize = 107;
+const ID_RESULT: usize = 108;
+const ID_COPY: usize = 109;
+const ID_SAVE: usize = 110;
+const ID_FAV: usize = 111;
+const ID_HIST: usize = 112;
+const ID_FAVS: usize = 113;
 
+/// Handles to every control, so the command handler can reach them.
 #[derive(Default, Clone, Copy)]
-struct Controls {
+struct Ui {
+    mode: isize,
+    search: isize,
+    search_lbl: isize,
     category: isize,
+    cat_lbl: isize,
     from: isize,
+    from_lbl: isize,
+    swap: isize,
     to: isize,
+    to_lbl: isize,
     value: isize,
+    value_lbl: isize,
+    format: isize,
     result: isize,
+    fav: isize,
+    hist: isize,
+    favs: isize,
 }
 
 thread_local! {
-    static CTRL: RefCell<Controls> = RefCell::new(Controls::default());
+    static CTRL: RefCell<Ui> = RefCell::new(Ui::default());
+    static APP: RefCell<App> = RefCell::new(App::new());
 }
 
 fn main() {
@@ -118,8 +150,8 @@ fn main() {
             WINDOW_STYLE(0x00CA_0000),
             100,
             100,
-            460,
-            260,
+            580,
+            640,
             None,
             None,
             Some(instance),
@@ -199,92 +231,101 @@ unsafe fn create_controls(parent: HWND) {
             }
         };
 
-    let _ = make("STATIC", "Type:", 0, 15, 20, 40, 22, 0);
-    let cat_box = make(
-        "COMBOBOX",
-        "",
-        CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_TABSTOP,
-        60,
-        18,
-        300,
-        200,
-        ID_CATEGORY,
-    );
-    for c in ALL_CATEGORIES {
-        add_combo_item(cat_box, c.label());
-    }
-    set_combo_sel(cat_box, 0);
+    let combo = CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_TABSTOP;
+    let list = WS_BORDER | WS_VSCROLL | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_TABSTOP;
 
-    let _ = make("STATIC", "From:", 0, 15, 58, 40, 22, 0);
-    let from_box = make(
-        "COMBOBOX",
+    // Mode: Convert / Calculator.
+    let _ = make("STATIC", "Mode:", 0, 15, 14, 45, 22, 0);
+    let mode = make("COMBOBOX", "", combo, 65, 12, 130, 200, ID_MODE);
+    add_combo_item(mode, "Convert");
+    add_combo_item(mode, "Calculator");
+    set_combo_sel(mode, 0);
+
+    // Category search.
+    let search_lbl = make("STATIC", "Search:", 0, 15, 50, 55, 22, 0);
+    let search = make(
+        "EDIT",
         "",
-        CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_TABSTOP,
-        60,
-        56,
-        150,
-        200,
-        ID_FROM,
+        ES_AUTOHSCROLL | WS_TABSTOP,
+        75,
+        48,
+        250,
+        24,
+        ID_SEARCH,
     );
 
-    // Swap button — the other front-ends have one too.
-    let _ = make("BUTTON", "Swap", WS_TABSTOP, 215, 56, 44, 24, ID_SWAP);
+    // Category.
+    let cat_lbl = make("STATIC", "Type:", 0, 15, 84, 45, 22, 0);
+    let category = make("COMBOBOX", "", combo, 65, 82, 320, 200, ID_CATEGORY);
 
-    let _ = make("STATIC", "To:", 0, 264, 58, 22, 22, 0);
-    let to_box = make(
-        "COMBOBOX",
-        "",
-        CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_TABSTOP,
-        290,
-        56,
-        130,
-        200,
-        ID_TO,
-    );
+    // From / To (+ Swap).
+    let from_lbl = make("STATIC", "From:", 0, 15, 118, 45, 22, 0);
+    let from = make("COMBOBOX", "", combo, 65, 116, 150, 200, ID_FROM);
+    let swap = make("BUTTON", "Swap", WS_TABSTOP, 222, 116, 50, 24, ID_SWAP);
+    let to_lbl = make("STATIC", "To:", 0, 280, 118, 25, 22, 0);
+    let to = make("COMBOBOX", "", combo, 308, 116, 150, 200, ID_TO);
 
-    let _ = make("STATIC", "Value:", 0, 15, 98, 45, 22, 0);
-    let value_box = make(
+    // Value.
+    let value_lbl = make("STATIC", "Value:", 0, 15, 152, 55, 22, 0);
+    let value = make(
         "EDIT",
         "1",
         ES_AUTOHSCROLL | WS_TABSTOP,
-        60,
-        96,
+        75,
+        150,
         300,
         24,
         ID_VALUE,
     );
 
-    let _ = make("STATIC", "=", 0, 15, 140, 20, 22, 0);
-    let result_box = make("STATIC", "", 0, 40, 140, 270, 24, ID_RESULT);
-    let _ = make("BUTTON", "Copy", WS_TABSTOP, 320, 139, 90, 26, ID_COPY);
+    // Number format.
+    let _ = make("STATIC", "Format:", 0, 15, 186, 55, 22, 0);
+    let format = make("COMBOBOX", "", combo, 75, 184, 120, 200, ID_FORMAT);
+    for f in NumFormat::ALL {
+        add_combo_item(format, f.label());
+    }
+    set_combo_sel(format, 0);
+
+    // Result + actions.
+    let _ = make("STATIC", "=", 0, 15, 220, 20, 22, 0);
+    let result = make("STATIC", "", 0, 40, 218, 330, 24, ID_RESULT);
+    let _ = make("BUTTON", "Copy", WS_TABSTOP, 380, 217, 60, 26, ID_COPY);
+    let _ = make("BUTTON", "Save", WS_TABSTOP, 445, 217, 55, 26, ID_SAVE);
+    let fav = make("BUTTON", "Fav", WS_TABSTOP, 505, 217, 45, 26, ID_FAV);
+
+    // Saved lists.
+    let _ = make("STATIC", "History", 0, 15, 252, 300, 22, 0);
+    let hist = make("LISTBOX", "", list, 15, 272, 530, 140, ID_HIST);
+    let _ = make("STATIC", "Favorites", 0, 15, 420, 300, 22, 0);
+    let favs = make("LISTBOX", "", list, 15, 440, 530, 140, ID_FAVS);
 
     CTRL.with(|c| {
-        *c.borrow_mut() = Controls {
-            category: cat_box,
-            from: from_box,
-            to: to_box,
-            value: value_box,
-            result: result_box,
+        *c.borrow_mut() = Ui {
+            mode,
+            search,
+            search_lbl,
+            category,
+            cat_lbl,
+            from,
+            from_lbl,
+            swap,
+            to,
+            to_lbl,
+            value,
+            value_lbl,
+            format,
+            result,
+            fav,
+            hist,
+            favs,
         };
     });
 
-    fill_units(Category::Length, from_box, to_box);
+    reload_categories();
+    reload_units();
+    refresh_lists();
+    apply_mode();
     recompute();
-}
-
-/// (Re)fill the from/to combo boxes for the given category.
-unsafe fn fill_units(category: Category, from_box: isize, to_box: isize) {
-    let _ = SendMessageW(hwnd(from_box), CB_RESETCONTENT, None, None);
-    let _ = SendMessageW(hwnd(to_box), CB_RESETCONTENT, None, None);
-    for u in category.units() {
-        add_combo_item(from_box, u);
-        add_combo_item(to_box, u);
-    }
-    set_combo_sel(from_box, 0);
-    set_combo_sel(
-        to_box,
-        1.min(category.units().len().saturating_sub(1) as i32),
-    );
 }
 
 unsafe fn add_combo_item(combo: isize, text: &str) {
@@ -308,6 +349,23 @@ unsafe fn set_combo_sel(combo: isize, index: i32) {
         Some(WPARAM(index as usize)),
         None,
     );
+}
+
+unsafe fn list_sel(list: isize) -> i32 {
+    SendMessageW(hwnd(list), LB_GETCURSEL, None, None).0 as i32
+}
+
+unsafe fn fill_list(list: isize, items: &[String]) {
+    let _ = SendMessageW(hwnd(list), LB_RESETCONTENT, None, None);
+    for item in items {
+        let t = wide(item);
+        let _ = SendMessageW(
+            hwnd(list),
+            LB_ADDSTRING,
+            None,
+            Some(LPARAM(t.as_ptr() as isize)),
+        );
+    }
 }
 
 unsafe fn get_text(control: isize) -> String {
@@ -348,59 +406,211 @@ unsafe fn set_clipboard(text: &str) {
     let _ = CloseClipboard();
 }
 
-/// The whole app: read current widgets, convert, write the result label.
+/// Refill the category dropdown from the (search-filtered) category list.
+unsafe fn reload_categories() {
+    let ui = CTRL.with(|c| *c.borrow());
+    let (cats, sel) = APP.with(|a| {
+        let a = a.borrow();
+        let cats = a.filtered_categories();
+        let sel = cats.iter().position(|c| *c == a.category).unwrap_or(0);
+        (cats, sel)
+    });
+
+    let _ = SendMessageW(hwnd(ui.category), CB_RESETCONTENT, None, None);
+    for c in &cats {
+        add_combo_item(ui.category, c.label());
+    }
+    set_combo_sel(ui.category, sel as i32);
+}
+
+/// Refill the from/to dropdowns from the current category's units.
+unsafe fn reload_units() {
+    let ui = CTRL.with(|c| *c.borrow());
+    let (units, from, to) = APP.with(|a| {
+        let a = a.borrow();
+        let units = a.units();
+        (units, a.from, a.to)
+    });
+
+    let _ = SendMessageW(hwnd(ui.from), CB_RESETCONTENT, None, None);
+    let _ = SendMessageW(hwnd(ui.to), CB_RESETCONTENT, None, None);
+    for u in units {
+        add_combo_item(ui.from, u);
+        add_combo_item(ui.to, u);
+    }
+    set_combo_sel(ui.from, from as i32);
+    set_combo_sel(ui.to, to as i32);
+}
+
+/// Repaint the history and favourites list boxes.
+unsafe fn refresh_lists() {
+    let ui = CTRL.with(|c| *c.borrow());
+    let (history, favorites) = APP.with(|a| {
+        let a = a.borrow();
+        let history: Vec<String> = a.history().iter().map(|e| e.describe()).collect();
+        let favorites: Vec<String> = a.favorites().iter().map(|e| e.describe()).collect();
+        (history, favorites)
+    });
+    fill_list(ui.hist, &history);
+    fill_list(ui.favs, &favorites);
+}
+
+/// Write the current result and star state to their controls.
 unsafe fn recompute() {
-    let c = CTRL.with(|c| *c.borrow());
-    if c.value == 0 {
+    let ui = CTRL.with(|c| *c.borrow());
+    if ui.value == 0 {
         return;
     }
-    let cat_idx = combo_sel(c.category).max(0) as usize;
-    let category = ALL_CATEGORIES[cat_idx.min(ALL_CATEGORIES.len().saturating_sub(1))];
-    let units = category.units();
+    let (out, fav_label) = APP.with(|a| {
+        let a = a.borrow();
+        (
+            a.result_text(),
+            if a.is_favorite() { "Unfav" } else { "Fav" },
+        )
+    });
+    set_text(ui.result, &out);
+    set_text(ui.fav, fav_label);
+}
 
-    let from_idx = combo_sel(c.from).max(0) as usize;
-    let to_idx = combo_sel(c.to).max(0) as usize;
-    let last = units.len().saturating_sub(1);
-    let from = units[from_idx.min(last)];
-    let to = units[to_idx.min(last)];
+/// Show/hide the unit widgets and relabel the input, depending on the mode.
+unsafe fn apply_mode() {
+    let ui = CTRL.with(|c| *c.borrow());
+    let convert = APP.with(|a| a.borrow().mode == Mode::Convert);
 
-    let text = get_text(c.value);
-    let out = match math::eval(&text) {
-        Ok(v) => format!("{} {}", fmt_num(convert(category, from, to, v)), to),
-        Err(_) => {
-            if text.trim().is_empty() {
-                String::new()
-            } else {
-                "(invalid expression)".to_string()
-            }
-        }
+    let show = |control: isize, visible: bool| {
+        let _ = ShowWindow(hwnd(control), if visible { SW_SHOW } else { SW_HIDE });
     };
-    set_text(c.result, &out);
+    for control in [
+        ui.search_lbl,
+        ui.search,
+        ui.cat_lbl,
+        ui.category,
+        ui.from_lbl,
+        ui.from,
+        ui.swap,
+        ui.to_lbl,
+        ui.to,
+    ] {
+        show(control, convert);
+    }
+
+    set_text(ui.value_lbl, if convert { "Value:" } else { "Expr:" });
+}
+
+/// Load a saved entry (from history or favourites) back into the UI.
+unsafe fn restore_entry(entry: convert_core::app::Entry) {
+    let ui = CTRL.with(|c| *c.borrow());
+    let (input, mode) = APP.with(|a| {
+        let mut a = a.borrow_mut();
+        a.restore(&entry);
+        (a.input.clone(), a.mode)
+    });
+
+    set_text(ui.value, &input);
+    set_combo_sel(ui.mode, if mode == Mode::Calculator { 1 } else { 0 });
+    apply_mode();
+    reload_categories();
+    reload_units();
+    recompute();
 }
 
 unsafe fn on_command(id: usize, code: u32) {
-    let c = CTRL.with(|c| *c.borrow());
+    let c = CTRL.with(|ui| *ui.borrow());
+    // Ignore notifications that arrive during WM_CREATE, before the handles
+    // are stored (e.g. the initial EN_CHANGE from the value edit).
+    if c.value == 0 {
+        return;
+    }
     match id {
-        ID_CATEGORY if code == CBN_SELCHANGE => {
-            let idx =
-                (combo_sel(c.category).max(0) as usize).min(ALL_CATEGORIES.len().saturating_sub(1));
-            let category = ALL_CATEGORIES[idx];
-            fill_units(category, c.from, c.to);
+        ID_MODE if code == CBN_SELCHANGE => {
+            let calculator = combo_sel(c.mode) == 1;
+            let input = APP.with(|a| {
+                let mut a = a.borrow_mut();
+                a.set_mode(if calculator {
+                    Mode::Calculator
+                } else {
+                    Mode::Convert
+                });
+                a.input.clone()
+            });
+            set_text(c.value, &input);
+            apply_mode();
+            reload_categories();
+            reload_units();
             recompute();
         }
-        ID_FROM | ID_TO if code == CBN_SELCHANGE => recompute(),
-        ID_VALUE if code == EN_CHANGE => recompute(),
+        ID_SEARCH if code == EN_CHANGE => {
+            let text = get_text(c.search);
+            APP.with(|a| a.borrow_mut().search = text);
+            reload_categories();
+        }
+        ID_CATEGORY if code == CBN_SELCHANGE => {
+            let idx = combo_sel(c.category).max(0) as usize;
+            APP.with(|a| {
+                let mut a = a.borrow_mut();
+                if let Some(cat) = a.filtered_categories().get(idx).copied() {
+                    a.set_category(cat);
+                }
+            });
+            reload_units();
+            recompute();
+        }
+        ID_FROM if code == CBN_SELCHANGE => {
+            let idx = combo_sel(c.from).max(0) as usize;
+            APP.with(|a| a.borrow_mut().set_from(idx));
+            recompute();
+        }
+        ID_TO if code == CBN_SELCHANGE => {
+            let idx = combo_sel(c.to).max(0) as usize;
+            APP.with(|a| a.borrow_mut().set_to(idx));
+            recompute();
+        }
         ID_SWAP if code == BN_CLICKED => {
-            let f = combo_sel(c.from);
-            let t = combo_sel(c.to);
-            set_combo_sel(c.from, t);
-            set_combo_sel(c.to, f);
+            APP.with(|a| a.borrow_mut().swap());
+            reload_units();
+            recompute();
+        }
+        ID_VALUE if code == EN_CHANGE => {
+            let text = get_text(c.value);
+            APP.with(|a| a.borrow_mut().input = text);
+            recompute();
+        }
+        ID_FORMAT if code == CBN_SELCHANGE => {
+            let idx = (combo_sel(c.format).max(0) as usize).min(NumFormat::ALL.len() - 1);
+            APP.with(|a| a.borrow_mut().format = NumFormat::ALL[idx]);
             recompute();
         }
         ID_COPY if code == BN_CLICKED => {
-            let text = get_text(c.result);
+            let text = APP.with(|a| a.borrow().result_text());
             if !text.is_empty() {
                 set_clipboard(&text);
+            }
+        }
+        ID_SAVE if code == BN_CLICKED => {
+            APP.with(|a| a.borrow_mut().save());
+            refresh_lists();
+        }
+        ID_FAV if code == BN_CLICKED => {
+            APP.with(|a| a.borrow_mut().toggle_favorite());
+            recompute();
+            refresh_lists();
+        }
+        ID_HIST if code == LBN_SELCHANGE => {
+            let idx = list_sel(c.hist);
+            if idx >= 0 {
+                let entry = APP.with(|a| a.borrow().history().get(idx as usize).cloned());
+                if let Some(entry) = entry {
+                    restore_entry(entry);
+                }
+            }
+        }
+        ID_FAVS if code == LBN_SELCHANGE => {
+            let idx = list_sel(c.favs);
+            if idx >= 0 {
+                let entry = APP.with(|a| a.borrow().favorites().get(idx as usize).cloned());
+                if let Some(entry) = entry {
+                    restore_entry(entry);
+                }
             }
         }
         _ => {}

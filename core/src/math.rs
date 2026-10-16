@@ -5,7 +5,7 @@
 //!
 //! ```text
 //! expr    := term (('+' | '-') term)*
-//! term    := unary (('*' | '/') unary)*
+//! term    := unary (('*' | '/' | '%') unary)*
 //! unary   := ('+' | '-') unary | power
 //! power   := primary ('^' unary)?          // '^' is RIGHT-associative
 //! primary := NUMBER | IDENT | IDENT '(' expr ')' | '(' expr ')'
@@ -55,6 +55,7 @@ enum Token {
     Minus,
     Star,
     Slash,
+    Percent,
     Caret,
     LParen,
     RParen,
@@ -70,6 +71,7 @@ impl Token {
             Token::Minus => "`-`".into(),
             Token::Star => "`*`".into(),
             Token::Slash => "`/`".into(),
+            Token::Percent => "`%`".into(),
             Token::Caret => "`^`".into(),
             Token::LParen => "`(`".into(),
             Token::RParen => "`)`".into(),
@@ -109,6 +111,10 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
             }
             '/' => {
                 tokens.push(Token::Slash);
+                i += 1;
+            }
+            '%' => {
+                tokens.push(Token::Percent);
                 i += 1;
             }
             '^' => {
@@ -232,6 +238,10 @@ impl Parser {
                     // Deliberately not checked: `x / 0.0` yields inf/NaN.
                     lhs /= self.unary()?;
                 }
+                Token::Percent => {
+                    self.advance();
+                    lhs %= self.unary()?;
+                }
                 _ => break,
             }
         }
@@ -332,26 +342,55 @@ impl Parser {
 fn constant(name: &str) -> Result<f64, String> {
     match name {
         "pi" => Ok(std::f64::consts::PI),
+        "tau" => Ok(std::f64::consts::TAU),
         "e" => Ok(std::f64::consts::E),
+        "phi" => Ok(std::f64::consts::GOLDEN_RATIO),
         _ => Err(format!("unknown identifier `{name}`")),
     }
 }
 
 fn apply_function(name: &str, x: f64) -> Result<f64, String> {
-    match name {
-        "sqrt" => Ok(x.sqrt()),
-        "abs" => Ok(x.abs()),
-        "sin" => Ok(x.sin()),
-        "cos" => Ok(x.cos()),
-        "tan" => Ok(x.tan()),
-        "ln" => Ok(x.ln()),
-        "log" => Ok(x.log10()),
-        "exp" => Ok(x.exp()),
-        "floor" => Ok(x.floor()),
-        "ceil" => Ok(x.ceil()),
-        "round" => Ok(x.round()),
-        _ => Err(format!("unknown function `{name}`")),
-    }
+    let v = match name {
+        "sqrt" => x.sqrt(),
+        "cbrt" => x.cbrt(),
+        "abs" => x.abs(),
+        "sign" => {
+            if x > 0.0 {
+                1.0
+            } else if x < 0.0 {
+                -1.0
+            } else {
+                x // 0.0, or NaN
+            }
+        }
+        "sin" => x.sin(),
+        "cos" => x.cos(),
+        "tan" => x.tan(),
+        "asin" => x.asin(),
+        "acos" => x.acos(),
+        "atan" => x.atan(),
+        "sinh" => x.sinh(),
+        "cosh" => x.cosh(),
+        "tanh" => x.tanh(),
+        "asinh" => x.asinh(),
+        "acosh" => x.acosh(),
+        "atanh" => x.atanh(),
+        "ln" => x.ln(),
+        "log" => x.log10(),
+        "log2" => x.log2(),
+        "exp" => x.exp(),
+        "exp2" => x.exp2(),
+        "floor" => x.floor(),
+        "ceil" => x.ceil(),
+        "round" => x.round(),
+        "trunc" => x.trunc(),
+        "fract" => x.fract(),
+        "deg" => x.to_degrees(),
+        "rad" => x.to_radians(),
+        "recip" => 1.0 / x,
+        _ => return Err(format!("unknown function `{name}`")),
+    };
+    Ok(v)
 }
 
 // ---------------------------------------------------------------------------
@@ -493,6 +532,39 @@ mod tests {
         assert_eq!(ok("floor(sqrt(10))"), 3.0);
         assert!(approx(ok("abs(sin(0) - 1)"), 1.0));
         assert_eq!(ok("round(sqrt(16)) + ceil(0.1)"), 5.0);
+    }
+
+    #[test]
+    fn modulo_operator() {
+        assert_eq!(ok("10%3"), 1.0);
+        assert_eq!(ok("2+10%3"), 3.0);
+        assert_eq!(ok("10%3*2"), 2.0);
+        assert_eq!(ok("7.5%2"), 1.5);
+    }
+
+    #[test]
+    fn extended_functions() {
+        assert_eq!(ok("cbrt(27)"), 3.0);
+        assert_eq!(ok("sign(-4)"), -1.0);
+        assert_eq!(ok("sign(0)"), 0.0);
+        assert_eq!(ok("trunc(3.9)"), 3.0);
+        assert_eq!(ok("trunc(-3.9)"), -3.0);
+        assert!(approx(ok("fract(3.25)"), 0.25));
+        assert!(approx(ok("log2(8)"), 3.0));
+        assert_eq!(ok("exp2(10)"), 1024.0);
+        assert!(approx(ok("asin(1)"), std::f64::consts::FRAC_PI_2));
+        assert!(approx(ok("atan(1)*4"), std::f64::consts::PI));
+        assert!(approx(ok("deg(pi)"), 180.0));
+        assert!(approx(ok("rad(180)"), std::f64::consts::PI));
+        assert!(approx(ok("cosh(0)"), 1.0));
+        assert_eq!(ok("recip(4)"), 0.25);
+    }
+
+    #[test]
+    fn extended_constants() {
+        assert!(approx(ok("tau"), std::f64::consts::TAU));
+        assert!(approx(ok("phi"), std::f64::consts::GOLDEN_RATIO));
+        assert!(approx(ok("tau/2"), std::f64::consts::PI));
     }
 
     #[test]
