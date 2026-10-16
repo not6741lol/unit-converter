@@ -149,6 +149,10 @@ in [`core/src/app.rs`](core/src/app.rs), and the egui interface itself lives in
 build are byte-for-byte the same UI. The `fltk` and `win32` front-ends are deliberately thin:
 they only wire their own widgets to that shared state.
 
+## Star history
+
+[![Star History Chart](https://api.star-history.com/svg?repos=not6741lol/unit-converter&type=Date)](https://star-history.com/#not6741lol/unit-converter&Date)
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
