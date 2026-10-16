@@ -40,6 +40,12 @@ jobs:
       - name: Build WASM
         run: cargo build --release --target wasm32-unknown-unknown -p convert-web
 
+      - name: Optimize WASM with wasm-opt
+        run: |
+          cargo install wasm-opt@0.133.0 --locked
+          wasm-opt --enable-bulk-memory --enable-bulk-memory-opt --enable-nontrapping-float-to-int --enable-reference-types --enable-mutable-globals -Oz \
+            target/wasm32-unknown-unknown/release/convert_web.wasm -o target/wasm32-unknown-unknown/release/convert_web.wasm
+
       - name: Generate JS glue
         run: |
           mkdir -p web/dist
