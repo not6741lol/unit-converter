@@ -40,11 +40,12 @@ jobs:
       - name: Build WASM
         run: cargo build --release --target wasm32-unknown-unknown -p convert-web
 
-      - name: Optimize WASM with wasm-opt
+      - name: Install Binaryen (wasm-opt)
         run: |
-          cargo install wasm-opt@0.133.0 --locked
-          wasm-opt --enable-bulk-memory --enable-bulk-memory-opt --enable-nontrapping-float-to-int --enable-reference-types --enable-mutable-globals -Oz \
-            target/wasm32-unknown-unknown/release/convert_web.wasm -o target/wasm32-unknown-unknown/release/convert_web.wasm
+          curl -sSL -o "$RUNNER_TEMP/binaryen.tar.gz" \
+            https://github.com/WebAssembly/binaryen/releases/download/version_133/binaryen-version_133-x86_64-linux.tar.gz
+          tar -xzf "$RUNNER_TEMP/binaryen.tar.gz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/binaryen-version_133/bin" >> "$GITHUB_PATH"
 
       - name: Generate JS glue
         run: |
@@ -54,6 +55,16 @@ jobs:
             target/wasm32-unknown-unknown/release/convert_web.wasm
           cp web/index.html web/dist/index.html
           touch web/dist/.nojekyll
+
+      - name: Optimize WASM with wasm-opt
+        run: |
+          wasm-opt \
+            --enable-bulk-memory --enable-bulk-memory-opt \
+            --enable-nontrapping-float-to-int --enable-reference-types \
+            --enable-mutable-globals \
+            -Oz web/dist/convert_web_bg.wasm -o web/dist/convert_web_bg.wasm.opt
+          mv web/dist/convert_web_bg.wasm.opt web/dist/convert_web_bg.wasm
+          ls -l web/dist
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
