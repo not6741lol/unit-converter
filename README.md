@@ -156,3 +156,7 @@ they only wire their own widgets to that shared state.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+<sub>Made by **not**. More projects and build notes: **[not6741.lol](https://not6741.lol/)**</sub>
